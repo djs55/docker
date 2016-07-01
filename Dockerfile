@@ -245,11 +245,13 @@ RUN set -x \
 
 # Install containerd
 ENV CONTAINERD_COMMIT b93a33be39bc4ef0fb00bfcb79147a28c33d9d43
+COPY 282.diff /go/282.diff
 RUN set -x \
 	&& export GOPATH="$(mktemp -d)" \
 	&& git clone https://github.com/docker/containerd.git "$GOPATH/src/github.com/docker/containerd" \
 	&& cd "$GOPATH/src/github.com/docker/containerd" \
 	&& git checkout -q "$CONTAINERD_COMMIT" \
+	&& patch -p1 -i /go/282.diff \
 	&& make static \
 	&& cp bin/containerd /usr/local/bin/docker-containerd \
 	&& cp bin/containerd-shim /usr/local/bin/docker-containerd-shim \
