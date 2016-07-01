@@ -1,70 +1,103 @@
+diff --git a/integration-test/check_test.go b/integration-test/check_test.go
+index d64a12f..d8245ff 100644
+--- a/integration-test/check_test.go
++++ b/integration-test/check_test.go
+@@ -258,13 +258,13 @@ func (cs *ContainerdSuite) TearDownTest(c *check.C) {
+ 		})
+ 
+ 		if err := cs.KillContainer(ctr.Id); err != nil {
+-			fmt.Fprintf(os.Stderr, "Failed to cleanup leftover test containers: %v", err)
++			fmt.Fprintf(os.Stderr, "Failed to cleanup leftover test containers: %v\n", err)
+ 		}
+ 
+ 		select {
+ 		case <-ch:
+ 		case <-time.After(3 * time.Second):
+-			fmt.Fprintf(os.Stderr, "TearDownTest: Containerd %v didn't die after 3 seconds", ctr.Id)
++			fmt.Fprintf(os.Stderr, "TearDownTest: Containerd %v didn't die after 3 seconds\n", ctr.Id)
+ 		}
+ 	}
+ }
+diff --git a/runtime/container.go b/runtime/container.go
+index 079e6b8..8375905 100644
+--- a/runtime/container.go
++++ b/runtime/container.go
+@@ -465,6 +465,7 @@ func (c *container) Exec(pid string, pspec specs.ProcessSpec, s Stdio) (pp Proce
+ func (c *container) createCmd(pid string, cmd *exec.Cmd, p *process) error {
+ 	p.cmd = cmd
+ 	if err := cmd.Start(); err != nil {
++		close(p.cmdDoneCh)
+ 		if exErr, ok := err.(*exec.Error); ok {
+ 			if exErr.Err == exec.ErrNotFound || exErr.Err == os.ErrNotExist {
+ 				return fmt.Errorf("%s not installed on system", c.shim)
+@@ -472,6 +473,13 @@ func (c *container) createCmd(pid string, cmd *exec.Cmd, p *process) error {
+ 		}
+ 		return err
+ 	}
++	go func() {
++		err := p.cmd.Wait()
++		if err == nil {
++			p.cmdSuccess = true
++		}
++		close(p.cmdDoneCh)
++	}()
+ 	if err := c.waitForCreate(p, cmd); err != nil {
+ 		return err
+ 	}
 diff --git a/runtime/process.go b/runtime/process.go
-index cfcb659..277deb7 100644
+index cfcb659..10d6a3c 100644
 --- a/runtime/process.go
 +++ b/runtime/process.go
-@@ -9,6 +9,7 @@ import (
- 	"os/exec"
- 	"path/filepath"
- 	"strconv"
-+	"sync"
- 	"syscall"
- 
- 	"github.com/docker/containerd/specs"
-@@ -46,7 +47,7 @@ type Process interface {
- 	// State returns if the process is running or not
- 	State() State
- 	// Wait reaps the shim process if avaliable
--	Wait()
-+	Wait() bool
- }
- 
- type processConfig struct {
+@@ -67,6 +67,7 @@ func newProcess(config *processConfig) (*process, error) {
+ 		container: config.c,
+ 		spec:      config.processSpec,
+ 		stdio:     config.stdio,
++		cmdDoneCh: make(chan struct{}),
+ 	}
+ 	uid, gid, err := getRootIDs(config.spec)
+ 	if err != nil {
 @@ -148,6 +149,8 @@ type process struct {
  	spec        specs.ProcessSpec
  	stdio       Stdio
  	cmd         *exec.Cmd
 +	cmdSuccess  bool
-+	cmdWaitLock sync.Mutex
++	cmdDoneCh   chan struct{}
  }
  
  func (p *process) ID() string {
-@@ -229,10 +232,17 @@ func (p *process) getPidFromFile() (int, error) {
- }
+@@ -230,8 +233,8 @@ func (p *process) getPidFromFile() (int, error) {
  
  // Wait will reap the shim process
--func (p *process) Wait() {
-+func (p *process) Wait() bool {
-+	p.cmdWaitLock.Lock()
-+	defer p.cmdWaitLock.Unlock()
- 	if p.cmd != nil {
+ func (p *process) Wait() {
+-	if p.cmd != nil {
 -		p.cmd.Wait()
-+		err := p.cmd.Wait()
-+		if err == nil {
-+			p.cmdSuccess = true
-+		}
-+		p.cmd = nil
++	if p.cmdDoneCh != nil {
++		<-p.cmdDoneCh
  	}
-+	return p.cmdSuccess
  }
  
- func getExitPipe(path string) (*os.File, error) {
-@@ -262,7 +272,7 @@ func (p *process) Start() error {
+@@ -261,10 +264,9 @@ func (p *process) Signal(s os.Signal) error {
+ func (p *process) Start() error {
  	if p.ID() == InitProcessID {
  		var (
- 			errC     = make(chan error, 1)
+-			errC     = make(chan error, 1)
 -			shimExit = make(chan struct{}, 1)
-+			shimExit = make(chan bool, 1)
- 			args     = append(p.container.runtimeArgs, "start", p.container.id)
- 			cmd      = exec.Command(p.container.runtime, args...)
+-			args     = append(p.container.runtimeArgs, "start", p.container.id)
+-			cmd      = exec.Command(p.container.runtime, args...)
++			errC = make(chan error, 1)
++			args = append(p.container.runtimeArgs, "start", p.container.id)
++			cmd  = exec.Command(p.container.runtime, args...)
  		)
-@@ -274,18 +284,23 @@ func (p *process) Start() error {
+ 		go func() {
+ 			out, err := cmd.CombinedOutput()
+@@ -273,19 +275,21 @@ func (p *process) Start() error {
+ 			}
  			errC <- nil
  		}()
- 		go func() {
+-		go func() {
 -			p.Wait()
 -			close(shimExit)
-+			shimExit <- p.Wait()
- 		}()
+-		}()
  		select {
  		case err := <-errC:
  			if err != nil {
@@ -74,8 +107,8 @@ index cfcb659..277deb7 100644
 -			cmd.Process.Kill()
 -			cmd.Wait()
 -			return ErrShimExited
-+		case success := <-shimExit:
-+			if !success {
++		case <-p.cmdDoneCh:
++			if !p.cmdSuccess {
 +				cmd.Process.Kill()
 +				cmd.Wait()
 +				return ErrShimExited
@@ -88,7 +121,7 @@ index cfcb659..277deb7 100644
  	}
  	return nil
 diff --git a/supervisor/sort_test.go b/supervisor/sort_test.go
-index 3a419db..fb9681f 100644
+index 3a419db..9438f0a 100644
 --- a/supervisor/sort_test.go
 +++ b/supervisor/sort_test.go
 @@ -1,10 +1,10 @@
@@ -103,14 +136,11 @@ index 3a419db..fb9681f 100644
  
  	"github.com/docker/containerd/runtime"
  	"github.com/docker/containerd/specs"
-@@ -70,8 +70,8 @@ func (p *testProcess) State() runtime.State {
- 	return runtime.Running
+@@ -71,7 +71,6 @@ func (p *testProcess) State() runtime.State {
  }
  
--func (p *testProcess) Wait() {
+ func (p *testProcess) Wait() {
 -
-+func (p *testProcess) Wait() bool {
-+	return true
  }
  
  func TestSortProcesses(t *testing.T) {
