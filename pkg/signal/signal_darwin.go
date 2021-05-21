@@ -3,6 +3,8 @@ package signal // import "github.com/docker/docker/pkg/signal"
 import (
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // SignalMap is a map of Darwin signals.
@@ -41,6 +43,6 @@ var SignalMap = map[string]syscall.Signal{
 	"XFSZ":   syscall.SIGXFSZ,
 }
 
-func isRuntimeSig(_ os.Signal) bool {
-	return false
+func isRuntimeSig(s os.Signal) bool {
+	return s == unix.SIGURG
 }
