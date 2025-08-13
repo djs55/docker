@@ -19,10 +19,10 @@ produces:
 consumes:
   - "application/json"
   - "text/plain"
-basePath: "/v1.53"
+basePath: "/v1.52"
 info:
   title: "Docker Engine API"
-  version: "1.53"
+  version: "1.52"
   x-logo:
     url: "https://docs.docker.com/assets/images/logo-docker-main.png"
   description: |
@@ -172,34 +172,6 @@ tags:
     x-displayName: "System"
 
 definitions:
-  ImageHistoryResponseItem:
-    type: "object"
-    x-go-name: HistoryResponseItem
-    title: "HistoryResponseItem"
-    description: "individual image layer information in response to ImageHistory operation"
-    required: [Id, Created, CreatedBy, Tags, Size, Comment]
-    properties:
-      Id:
-        type: "string"
-        x-nullable: false
-      Created:
-        type: "integer"
-        format: "int64"
-        x-nullable: false
-      CreatedBy:
-        type: "string"
-        x-nullable: false
-      Tags:
-        type: "array"
-        items:
-          type: "string"
-      Size:
-        type: "integer"
-        format: "int64"
-        x-nullable: false
-      Comment:
-        type: "string"
-        x-nullable: false
   PortSummary:
     type: "object"
     description: |
@@ -437,12 +409,12 @@ definitions:
             default: false
           ReadOnlyNonRecursive:
             description: |
-              Make the mount non-recursively read-only, but still leave the mount recursive
-              (unless NonRecursive is set to `true` in conjunction).
+               Make the mount non-recursively read-only, but still leave the mount recursive
+               (unless NonRecursive is set to `true` in conjunction).
 
-              Added in v1.44, before that version all read-only mounts were
-              non-recursive by default. To match the previous behaviour this
-              will default to `true` for clients on versions prior to v1.44.
+               Added in v1.44, before that version all read-only mounts were
+               non-recursive by default. To match the previous behaviour this
+               will default to `true` for clients on versions prior to v1.44.
             type: "boolean"
             default: false
           ReadOnlyForceRecursive:
@@ -495,10 +467,7 @@ definitions:
             type: "integer"
             format: "int64"
           Mode:
-            description: |
-              The permission mode for the tmpfs mount in an integer.
-              The value must not be in octal format (e.g. 755) but rather
-              the decimal representation of the octal value (e.g. 493).
+            description: "The permission mode for the tmpfs mount in an integer."
             type: "integer"
           Options:
             description: |
@@ -838,9 +807,7 @@ definitions:
           Value: "UUID2"
 
   HealthConfig:
-    description: |
-      A test to perform to check that the container is healthy.
-      Healthcheck commands should be side-effect free.
+    description: "A test to perform to check that the container is healthy."
     type: "object"
     properties:
       Test:
@@ -851,12 +818,6 @@ definitions:
           - `["NONE"]` disable healthcheck
           - `["CMD", args...]` exec arguments directly
           - `["CMD-SHELL", command]` run command with system's default shell
-
-          A non-zero exit code indicates a failed healthcheck:
-          - `0` healthy
-          - `1` unhealthy
-          - `2` reserved (treated as unhealthy)
-          - other values: error running probe
         type: "array"
         items:
           type: "string"
@@ -870,10 +831,6 @@ definitions:
         description: |
           The time to wait before considering the check to have hung. It should
           be 0 or at least 1000000 (1 ms). 0 means inherit.
-
-          If the health check command does not complete within this timeout,
-          the check is considered failed and the health check process is
-          forcibly terminated without a graceful shutdown.
         type: "integer"
         format: "int64"
       Retries:
@@ -1847,15 +1804,15 @@ definitions:
         $ref: "#/definitions/OCIDescriptor"
       Manifests:
         description: |
-          Manifests is a list of image manifests available in this image. It
-          provides a more detailed view of the platform-specific image manifests or
-          other image-attached data like build attestations.
+            Manifests is a list of image manifests available in this image. It
+            provides a more detailed view of the platform-specific image manifests or
+            other image-attached data like build attestations.
 
-          Only available if the daemon provides a multi-platform image store
-          and the `manifests` option is set in the inspect request.
+            Only available if the daemon provides a multi-platform image store
+            and the `manifests` option is set in the inspect request.
 
-          WARNING: This is experimental and may change at any time without any backward
-          compatibility.
+            WARNING: This is experimental and may change at any time without any backward
+            compatibility.
         type: "array"
         x-nullable: true
         items:
@@ -3009,31 +2966,6 @@ definitions:
         description: |
           The unique identifier for the device within its source driver.
           For CDI devices, this would be an FQDN like "vendor.com/gpu=0".
-
-  NRIInfo:
-    description: |
-      Information about the Node Resource Interface (NRI).
-
-      This field is only present if NRI is enabled.
-    type: "object"
-    x-nullable: true
-    properties:
-      Info:
-        description: |
-          Information about NRI, provided as "label" / "value" pairs.
-
-          <p><br /></p>
-
-          > **Note**: The information returned in this field, including the
-          > formatting of values and labels, should not be considered stable,
-          > and may change without notice.
-        type: "array"
-        items:
-          type: "array"
-          items:
-            type: "string"
-        example:
-          - ["plugin-path", "/opt/docker/nri/plugins"]
 
   ErrorDetail:
     type: "object"
@@ -5736,8 +5668,8 @@ definitions:
           com.example.some-other-label: "some-other-value"
       Data:
         description: |
-          Data is the data to store as a secret, formatted as a standard base64-encoded
-          ([RFC 4648](https://tools.ietf.org/html/rfc4648#section-4)) string.
+          Data is the data to store as a secret, formatted as a Base64-url-safe-encoded
+          ([RFC 4648](https://tools.ietf.org/html/rfc4648#section-5)) string.
           It must be empty if the Driver field is set, in which case the data is
           loaded from an external secret store. The maximum allowed size is 500KB,
           as defined in [MaxSecretSize](https://pkg.go.dev/github.com/moby/swarmkit/v2@v2.0.0/api/validation#MaxSecretSize).
@@ -5791,8 +5723,8 @@ definitions:
           type: "string"
       Data:
         description: |
-          Data is the data to store as a config, formatted as a standard base64-encoded
-          ([RFC 4648](https://tools.ietf.org/html/rfc4648#section-4)) string.
+          Data is the data to store as a config, formatted as a Base64-url-safe-encoded
+          ([RFC 4648](https://tools.ietf.org/html/rfc4648#section-5)) string.
           The maximum allowed size is 1000KB, as defined in [MaxConfigSize](https://pkg.go.dev/github.com/moby/swarmkit/v2@v2.0.0-20250103191802-8c1959736554/manager/controlapi#MaxConfigSize).
         type: "string"
       Templating:
@@ -6283,11 +6215,7 @@ definitions:
         example: 0
       stats:
         description: |
-          All the stats exported via memory.stat.
-
-          The fields in this object differ between cgroups v1 and v2.
-          On cgroups v1, fields such as `cache`, `rss`, `mapped_file` are available.
-          On cgroups v2, fields such as `file`, `anon`, `inactive_file` are available.
+          All the stats exported via memory.stat. when using cgroups v2.
 
           This field is Linux-specific and omitted for Windows containers.
         type: "object"
@@ -6627,9 +6555,7 @@ definitions:
         example: "linux"
       Arch:
         description: |
-          Architecture of the daemon, as returned by the Go runtime (`GOARCH`).
-
-          A full list of possible values can be found in the [Go documentation](https://go.dev/doc/install/source#environment).
+          The architecture that the daemon is running on
         type: "string"
         example: "amd64"
       KernelVersion:
@@ -6856,13 +6782,10 @@ definitions:
         example: "linux"
       Architecture:
         description: |
-          Hardware architecture of the host, as returned by the operating system.
-          This is equivalent to the output of `uname -m` on Linux.
+          Hardware architecture of the host, as returned by the Go runtime
+          (`GOARCH`).
 
-          Unlike `Arch` (from `/version`), this reports the machine's native
-          architecture, which can differ from the Go runtime architecture when
-          running a binary compiled for a different architecture (for example,
-          a 32-bit binary running on 64-bit hardware).
+          A full list of possible values can be found in the [Go documentation](https://go.dev/doc/install/source#environment).
         type: "string"
         example: "x86_64"
       NCPU:
@@ -7081,8 +7004,6 @@ definitions:
         type: "array"
         items:
           $ref: "#/definitions/DeviceInfo"
-      NRI:
-        $ref: "#/definitions/NRIInfo"
       Warnings:
         description: |
           List of warnings / informational messages about missing features, or
@@ -8560,8 +8481,7 @@ paths:
 
         To calculate the values shown by the `stats` command of the docker cli tool
         the following formulas can be used:
-        * used_memory = `memory_stats.usage - memory_stats.stats.cache` (cgroups v1)
-        * used_memory = `memory_stats.usage - memory_stats.stats.inactive_file` (cgroups v2)
+        * used_memory = `memory_stats.usage - memory_stats.stats.cache`
         * available_memory = `memory_stats.limit`
         * Memory usage % = `(used_memory / available_memory) * 100.0`
         * cpu_delta = `cpu_stats.cpu_usage.total_usage - precpu_stats.cpu_usage.total_usage`
@@ -9922,7 +9842,33 @@ paths:
           schema:
             type: "array"
             items:
-              $ref: "#/definitions/ImageHistoryResponseItem"
+              type: "object"
+              x-go-name: HistoryResponseItem
+              title: "HistoryResponseItem"
+              description: "individual image layer information in response to ImageHistory operation"
+              required: [Id, Created, CreatedBy, Tags, Size, Comment]
+              properties:
+                Id:
+                  type: "string"
+                  x-nullable: false
+                Created:
+                  type: "integer"
+                  format: "int64"
+                  x-nullable: false
+                CreatedBy:
+                  type: "string"
+                  x-nullable: false
+                Tags:
+                  type: "array"
+                  items:
+                    type: "string"
+                Size:
+                  type: "integer"
+                  format: "int64"
+                  x-nullable: false
+                Comment:
+                  type: "string"
+                  x-nullable: false
           examples:
             application/json:
               - Id: "3db9c44f45209632d6050b35958829c3a2aa256d81b9a7be45b362ff85c54710"
@@ -10048,12 +9994,7 @@ paths:
   /images/{name}/tag:
     post:
       summary: "Tag an image"
-      description: |
-        Create a tag that refers to a source image.
-
-        This creates an additional reference (tag) to the source image. The tag
-        can include a different repository name and/or tag. If the repository
-        or tag already exists, it will be overwritten.
+      description: "Tag an image so that it becomes part of a repository."
       operationId: "ImageTag"
       responses:
         201:
@@ -10514,7 +10455,6 @@ paths:
 
       operationId: "SystemEvents"
       produces:
-        - "application/jsonl"
         - "application/x-ndjson"
         - "application/json-seq"
       responses:
@@ -13599,9 +13539,6 @@ paths:
       description: |
         Start a new interactive session with a server. Session allows server to
         call back to the client for advanced capabilities.
-
-        > **Deprecated**: This endpoint is deprecated and will be removed in a future version.
-        > Server should support gRPC directly on the listening socket.
 
         ### Hijacking
 

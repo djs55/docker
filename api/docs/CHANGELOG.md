@@ -21,6 +21,13 @@ keywords: "API, Docker, rcli, REST, documentation"
   when negotiating content-type.
 * Deprecated: The `POST /grpc` and `POST /session` endpoints are deprecated and
   will be removed in a future version.
+* Port bindings specified in `POST /containers/create` and returned in
+  `GET /containers/{id}/json` now take two new fields: `Mapper` and `ExtraParams`.
+  The `Mapper` field is a string indicating the port mapper used to create the
+  port binding, and the `ExtraParams` field is a map of additional parameters
+  passed to the mapper.
+  WARNING: These fields are experimental and may change at any time without any
+  backward compatibility.
 
 ## v1.52 API changes
 
