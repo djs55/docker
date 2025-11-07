@@ -321,6 +321,11 @@ func (s *systemRouter) getEvents(ctx context.Context, w http.ResponseWriter, r *
 		return err
 	}
 
+	// Create a cancelable context so we can close this connection during shutdown
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	s.registerEventConnection(cancel)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	output := ioutils.NewWriteFlusher(w)

@@ -141,6 +141,10 @@ type Daemon struct {
 	hosts        map[string]bool // hosts stores the addresses the daemon is listening on
 	startupDone  chan struct{}
 
+	// postContainerShutdownCallbacks are called after all containers have been shut down
+	// during daemon shutdown, but before other cleanup (volumes, images, etc.)
+	postContainerShutdownCallbacks []func()
+
 	attachmentStore       network.AttachmentStore
 	attachableNetworkLock *locker.Locker
 
@@ -1266,6 +1270,14 @@ func (daemon *Daemon) shutdownTimeout(cfg *config.Config) int {
 	return shutdownTimeout
 }
 
+// RegisterPostContainerShutdownCallback registers a callback to be called after
+// all containers have been shut down during daemon shutdown, but before other
+// cleanup (volumes, images, etc.). This is useful for closing long-lived API
+// connections that should remain open while containers are shutting down.
+func (daemon *Daemon) RegisterPostContainerShutdownCallback(callback func()) {
+	daemon.postContainerShutdownCallbacks = append(daemon.postContainerShutdownCallbacks, callback)
+}
+
 // Shutdown stops the daemon.
 func (daemon *Daemon) Shutdown(ctx context.Context) error {
 	daemon.shutdown = true
@@ -1300,6 +1312,14 @@ func (daemon *Daemon) Shutdown(ctx context.Context) error {
 			}
 			logger.Debugf("shut down container")
 		})
+	}
+
+	// Call post-container-shutdown callbacks after all containers have been stopped
+	// but before cleaning up volumes, images, etc. This allows orchestrators to
+	// receive final container events before the API connections are closed.
+	log.G(ctx).Debug("calling post-container-shutdown callbacks")
+	for _, callback := range daemon.postContainerShutdownCallbacks {
+		callback()
 	}
 
 	if daemon.volumes != nil {

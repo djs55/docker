@@ -711,6 +711,15 @@ func buildRouters(opts routerOptions) []router.Router {
 		},
 	}
 
+	sysRouter := systemrouter.NewRouter(opts.daemon, opts.cluster, opts.builder.buildkit, opts.daemon.Features)
+
+	// Register callback to close /events connections after containers shut down
+	// but before other cleanup. This ensures orchestrators receive all container
+	// shutdown events before connections are closed.
+	if ec, ok := sysRouter.(systemrouter.EventsCloser); ok {
+		opts.daemon.RegisterPostContainerShutdownCallback(ec.CloseEventConnections)
+	}
+
 	routers := []router.Router{
 		// we need to add the checkpoint router before the container router or the DELETE gets masked
 		checkpointrouter.NewRouter(opts.daemon, decoder),
@@ -719,7 +728,7 @@ func buildRouters(opts routerOptions) []router.Router {
 			opts.daemon.ImageService(),
 			opts.daemon.RegistryService(),
 		),
-		systemrouter.NewRouter(opts.daemon, opts.cluster, opts.builder.buildkit, opts.daemon.Features),
+		sysRouter,
 		volume.NewRouter(opts.daemon.VolumesService(), opts.cluster),
 		build.NewRouter(opts.builder.backend, opts.daemon),
 		sessionrouter.NewRouter(opts.builder.sessionManager),
