@@ -633,7 +633,11 @@ func (c *client) processEventStream(ctx context.Context, ns string) {
 						return
 					}
 				}
-				c.logger.WithError(ctx.Err()).Info("stopping event stream following graceful shutdown")
+				if errors.Is(ctx.Err(), context.Canceled) {
+					c.logger.Info("stopping event stream following graceful shutdown")
+				} else {
+					c.logger.WithError(ctx.Err()).Info("stopping event stream following graceful shutdown")
+				}
 			}
 			return
 		case ev := <-eventStream:
