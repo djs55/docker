@@ -166,3 +166,9 @@ func (e *Events) loadBufferedEvents(since, until time.Time, topic func(interface
 	}
 	return buffered
 }
+
+// Close all the channels returned to event subscribers.
+func (e *Events) Close() error {
+	e.pub.Close()
+	return nil
+}
